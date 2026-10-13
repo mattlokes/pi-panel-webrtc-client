@@ -1,7 +1,7 @@
 """The window: always running; a session's video is plugged in and out.
 
-    videotestsrc black ─▶ textoverlay ─▶ sel.sink_0   (the status screen)
-    proxysrc ──────────────────────────▶ sel.sink_1   (a session's proxysink)
+    videotestsrc black ─▶ cairooverlay ─▶ sel.sink_0   (the status screen)
+    proxysrc ───────────────────────────▶ sel.sink_1   (a session's proxysink)
     input-selector sel ─▶ waylandsink fullscreen
 
 pi-panel-ctl only switches to apps whose window is mapped, so the window must
@@ -18,9 +18,13 @@ fails to negotiate DMABuf through them.
 The video pad must be selected before media flows: input-selector answers
 the decoder's caps and allocation queries only on its active pad. So
 `attach` comes when the answer is applied, and until the first frame the
-screen keeps the last status frame ("connecting…"). `detach` comes before a
-session pipeline is torn down, so waylandsink lets go of that pipeline's
-buffers.
+screen keeps the last status frame ("connecting…", its spinner standing
+still). `detach` comes before a session pipeline is torn down, so waylandsink
+lets go of that pipeline's buffers.
+
+The status screen is drawn with Cairo on a 1280x720 canvas: a ring spinner,
+the camera's label, and a dimmer line or two saying what is going on. The
+spinner's angle comes from the buffer timestamp, so nothing has to tick.
 
 waylandsink scales frames to the window through wp_viewporter, which the
 pi-panel compositor provides.
@@ -29,14 +33,27 @@ pi-panel compositor provides.
 from __future__ import annotations
 
 import logging
-from typing import Callable
+import math
+from typing import Any, Callable
 
 import gi
 
 gi.require_version("Gst", "1.0")
-from gi.repository import Gst  # noqa: E402
+gi.require_version("Pango", "1.0")
+gi.require_version("PangoCairo", "1.0")
+gi.require_foreign("cairo")      # python3-gi-cairo: the draw signal's context
+from gi.repository import Gst, Pango, PangoCairo  # noqa: E402
+
+from .status import StatusView  # noqa: E402
 
 log = logging.getLogger("pi-panel-webrtc")
+
+WIDTH, HEIGHT = 1280, 720        # the status canvas; waylandsink scales it
+RING_RADIUS, RING_WIDTH = 22, 3
+RING_PERIOD = 1.2                # seconds per turn
+RING_ARC = math.radians(100)
+TEXT_WIDTH = 640                 # errors wrap inside this
+GAP = 14                         # between ring, label, detail and hint
 
 
 class Display:
@@ -48,9 +65,8 @@ class Display:
             "input-selector name=sel sync-streams=false "
             "! waylandsink name=sink fullscreen=true sync=false "
             "videotestsrc pattern=black is-live=true "
-            "! video/x-raw,format=BGRx,width=1280,height=720,framerate=5/1 "
-            "! textoverlay name=status valignment=center halignment=center "
-            "  font-desc=\"Sans 28\" shaded-background=true wait-text=false "
+            f"! video/x-raw,format=BGRx,width={WIDTH},height={HEIGHT},framerate=20/1 "
+            "! cairooverlay name=status "
             "! sel.sink_0 "
             "proxysrc name=video ! sel.sink_1"
         )
@@ -66,17 +82,69 @@ class Display:
         # it (it is BindsTo= the compositor anyway).
         bus.connect("message::error", lambda _b, m: on_fatal(
             f"display: {m.parse_error()[0].message}"))
-        self._text = None
+        self._view: StatusView | None = None
+        self._label_font = Pango.FontDescription("Sans Medium 15")
+        self._detail_font = Pango.FontDescription("Sans 11")
+        self._hint_font = Pango.FontDescription("Sans 10")
+        self.overlay.connect("draw", self._draw)
 
     def start(self) -> None:
         if self.pipeline.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
             raise RuntimeError("cannot open the display (is WAYLAND_DISPLAY a running compositor?)")
 
-    def set_text(self, text: str) -> None:
-        if text != self._text:
-            self._text = text
-            self.overlay.set_property("text", text)
-            self.overlay.set_property("silent", not text)
+    def set_status(self, view: StatusView | None) -> None:
+        self._view = view
+
+    def _draw(self, _overlay: Gst.Element, cr: Any, timestamp: int, _duration: int) -> None:
+        """Paint the status screen on one frame. Runs on the streaming thread."""
+        view = self._view            # read once: the main loop may swap it
+        if view is None:
+            return
+        try:
+            self._paint(cr, view, timestamp / Gst.SECOND)
+        except Exception:            # never let a drawing bug into GStreamer
+            log.exception("drawing the status screen")
+            self._view = None
+
+    def _layout(self, cr: Any, text: str, font: Pango.FontDescription,
+                lines: int) -> tuple[Pango.Layout, int]:
+        layout = PangoCairo.create_layout(cr)
+        layout.set_font_description(font)
+        layout.set_width(TEXT_WIDTH * Pango.SCALE)
+        layout.set_alignment(Pango.Alignment.CENTER)
+        layout.set_wrap(Pango.WrapMode.WORD_CHAR)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        layout.set_height(-lines)    # negative: at most this many lines
+        layout.set_text(text, -1)
+        return layout, layout.get_pixel_size()[1]
+
+    def _paint(self, cr: Any, view: StatusView, seconds: float) -> None:
+        texts = [(layout, height, alpha) for layout, height, alpha in (
+            (*self._layout(cr, view.label, self._label_font, 1), 0.9),
+            (*self._layout(cr, view.detail, self._detail_font, 3), 0.6),
+            (*self._layout(cr, view.hint, self._hint_font, 1), 0.45),
+        ) if layout.get_text()]
+        ring = 2 * RING_RADIUS + RING_WIDTH if view.spinner else 0
+        heights = ([ring] if ring else []) + [height for _, height, _ in texts]
+        y = (HEIGHT - sum(heights) - GAP * (len(heights) - 1)) / 2
+
+        if ring:
+            cx, cy = WIDTH / 2, y + ring / 2
+            start = 2 * math.pi * (seconds % RING_PERIOD) / RING_PERIOD
+            cr.set_line_width(RING_WIDTH)
+            cr.set_line_cap(1)       # cairo.LINE_CAP_ROUND
+            cr.set_source_rgba(1, 1, 1, 0.12)
+            cr.arc(cx, cy, RING_RADIUS, 0, 2 * math.pi)
+            cr.stroke()
+            cr.set_source_rgba(1, 1, 1, 0.85)
+            cr.arc(cx, cy, RING_RADIUS, start, start + RING_ARC)
+            cr.stroke()
+            y += ring + GAP
+        for layout, height, alpha in texts:
+            cr.set_source_rgba(1, 1, 1, alpha)
+            cr.move_to((WIDTH - TEXT_WIDTH) / 2, y)
+            PangoCairo.show_layout(cr, layout)
+            y += height + GAP
 
     def attach(self, proxysink: Gst.Element) -> None:
         """Show the video arriving at |proxysink| (in a session pipeline)."""

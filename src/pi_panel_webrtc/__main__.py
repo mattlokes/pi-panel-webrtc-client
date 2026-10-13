@@ -28,21 +28,9 @@ from pi_panel_varlink import AppService, Call, Interface, VarlinkError  # noqa: 
 from .config import Config, ConfigError  # noqa: E402
 from .controller import Controller  # noqa: E402
 from .decoders import DecoderLadder  # noqa: E402
+from .status import status_view  # noqa: E402
 
 log = logging.getLogger("pi-panel-webrtc")
-
-
-def overlay_text(status: dict[str, Any]) -> str:
-    state, label = status["state"], status["label"]
-    if state == "connecting":
-        return f"{label}\nconnecting…"
-    if state == "retrying":
-        retry = status.get("retry_in")
-        return f"{label}\n{status.get('error') or 'offline'}" + (
-            f"\nretrying in {retry:.0f}s" if retry else "")
-    if state == "idle" and status["visible"]:
-        return label
-    return ""
 
 
 def on_main(fn, *args) -> None:
@@ -138,7 +126,7 @@ def main() -> int:
     ladder = DecoderLadder()     # shared: a failed hardware decoder stays failed
 
     def refresh() -> None:
-        display.set_text(overlay_text(controller.status()))
+        display.set_status(status_view(controller.status()))
 
     controller = Controller(
         config,

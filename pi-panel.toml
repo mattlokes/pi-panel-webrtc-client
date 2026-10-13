@@ -20,10 +20,12 @@ templates = ["config.toml.example"]
 packages = [
     "python3-gi",
     "python3-gst-1.0",             # gst-python overrides: without them promise replies crash
+    "python3-gi-cairo",            # the status screen is drawn with Cairo (cairooverlay's draw signal)
+    "gir1.2-pango-1.0",            # Pango / PangoCairo typelibs, for its text
     "gir1.2-gst-plugins-bad-1.0",  # GstWebRTC / GstSdp typelibs (pulls in Gst, GstBase)
     "gstreamer1.0-plugins-bad",    # webrtcbin, proxysink/src, waylandsink, h265parse,
                                    # v4l2slh265dec (the Pi 5's HEVC block: needs kernel >= 6.18)
-    "gstreamer1.0-plugins-good",   # rtph264depay, rtph265depay
+    "gstreamer1.0-plugins-good",   # rtph264depay, rtph265depay, cairooverlay
     "gstreamer1.0-libav",          # avdec_h264, avdec_h265
     "gstreamer1.0-nice",           # ICE for webrtcbin
 ]

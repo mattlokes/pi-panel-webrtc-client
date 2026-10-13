@@ -18,6 +18,7 @@ import pytest
 from pi_panel_webrtc.config import Config, ConfigError
 from pi_panel_webrtc.controller import Controller
 from pi_panel_webrtc.signalling import SignallingError, post_offer
+from pi_panel_webrtc.status import StatusView, status_view
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -560,3 +561,30 @@ def test_stream_codecs_over_http():
         assert stream_codecs("http://127.0.0.1:9", "x", timeout=1) == set()
     finally:
         server.shutdown()
+
+
+# --- status screen ------------------------------------------------------------
+
+def _status(state, **extra):
+    return {"state": state, "label": "Front door", "visible": True, **extra}
+
+
+def test_status_view_connecting():
+    assert status_view(_status("connecting")) == \
+        StatusView("Front door", "connecting…", spinner=True)
+
+
+def test_status_view_retrying():
+    assert status_view(_status("retrying", error="WebRTC connection lost", retry_in=11.6)) == \
+        StatusView("Front door", "WebRTC connection lost", "retrying in 12s", spinner=True)
+    # No reason yet, and the retry is due now.
+    for retry in (0, None):
+        assert status_view(_status("retrying", error=None, retry_in=retry)) == \
+            StatusView("Front door", "offline", spinner=True)
+    assert status_view(_status("retrying")) == StatusView("Front door", "offline", spinner=True)
+
+
+def test_status_view_idle_and_playing():
+    assert status_view(_status("idle")) == StatusView("Front door")
+    assert status_view(_status("idle", visible=False)) is None
+    assert status_view(_status("playing")) is None

@@ -19,7 +19,7 @@ jazz must run kernel ≥ 6.18 for the HEVC decoder (it runs 6.18.50+rpt).
 ## Design points worth preserving
 
 - **System Python, no venv.** PyGObject and gst-python come from apt and must match the system GStreamer. The manifest runs `/usr/bin/python3` and sets `PYTHONPATH` to `src/` plus pi-panel-varlink's source, using a relative layout path. Don't add pip dependencies.
-- **Two pipelines, joined by proxysink → proxysrc.** The display pipeline (`input-selector` between a black/textoverlay status branch and a `proxysrc`, then waylandsink) runs for the life of the process, so the window stays mapped: pi-panel-ctl can only switch to a mapped window. Each session ends in a `proxysink`, which `Display.attach` plugs in. Alternatives measured on jazz:
+- **Two pipelines, joined by proxysink → proxysrc.** The display pipeline (`input-selector` between a black/cairooverlay status branch and a `proxysrc`, then waylandsink) runs for the life of the process, so the window stays mapped: pi-panel-ctl can only switch to a mapped window. Each session ends in a `proxysink`, which `Display.attach` plugs in. Alternatives measured on jazz:
   - The intervideo elements copy frames to system memory, which rules out zero copy.
   - appsink/appsrc don't forward queries, so the decoder can't negotiate DMABuf (not-negotiated).
   - `glupload ! glcolorconvert ! gldownload` on the SAND frames gives **black frames**.

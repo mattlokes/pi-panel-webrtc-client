@@ -159,15 +159,15 @@ journalctl -u pi-panel-app@webrtc -f
 - the video size;
 - the number of decoded frames.
 
-While a feed is connecting or retrying, the screen shows the camera's name
-and the reason. A lost feed is retried with backoff (1s up to 30s).
+While a feed is connecting or retrying, the screen shows a spinner, the
+camera's name and the reason. A lost feed is retried with backoff (1s up to 30s).
 
 ## How it works
 
 ```
 display (always running):
-    videotestsrc (black) ─▶ textoverlay ─▶ ┐
-    proxysrc ─────────────────────────────▶ input-selector ─▶ waylandsink
+    videotestsrc (black) ─▶ cairooverlay ─▶ ┐
+    proxysrc ──────────────────────────────▶ input-selector ─▶ waylandsink
 session (per connection):
     webrtcbin ─▶ rtph265depay ─▶ h265parse ─▶ v4l2slh265dec ─▶ proxysink    (H.265, hardware)
     webrtcbin ─▶ rtph265depay ─▶ h265parse ─▶ avdec_h265 ─▶ videoconvert ─▶ proxysink
