@@ -93,8 +93,7 @@ server.
 H.265 is used whenever the stream is H.265: nothing needs setting. The app
 asks go2rtc which codec the stream has, and offers only that one. If go2rtc
 doesn't know yet (the stream's source hasn't started), it offers H.265 and
-then H.264. Offering H.265 to an H.264 stream is unsafe: go2rtc 1.9.14 can
-answer H.265 and then send nothing.
+then H.264, and plays whichever go2rtc sends.
 
 The hardware decoder needs **kernel 6.18 or newer**. On 6.12, `rpi-hevc-dec`
 doesn't report its frame sizes, so GStreamer fails with "Unsupported pixel

@@ -531,7 +531,7 @@ def test_offer_codecs():
     assert offer_codecs({"h264"}) == ["h264"]
     assert offer_codecs({"h265"}) == ["h265"]
     assert offer_codecs({"h264", "h265"}) == ["h265", "h264"]
-    assert offer_codecs(set()) == ["h265", "h264"]          # not running yet: H.265 first
+    assert offer_codecs(set()) == ["h265", "h264"]          # not running yet: go2rtc picks
     assert offer_codecs({"mjpeg"}) == ["h265", "h264"]
 
 

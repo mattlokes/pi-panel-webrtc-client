@@ -81,11 +81,10 @@ def video_codecs(stream: dict) -> set[str]:
 def offer_codecs(known: set[str]) -> list[str]:
     """What to offer, best first: H.265, then H.264.
 
-    If go2rtc already knows the stream's codec, offer only that. Asked for a
-    codec it cannot serve, go2rtc may still answer with it and then send
-    nothing: a producer that has not started yet (e.g. `ffmpeg:front_door#
-    audio=opus`) matches any codec. Measured on go2rtc 1.9.14 with an H.264
-    stream: offered H.265 first, it answered H.265.
+    If go2rtc already knows the stream's codec (its producer is running),
+    offer only that. Otherwise offer both: go2rtc answers with both, in our
+    order, and sends the one the stream has. So the answer does not say which
+    codec is coming; the payload that arrives does.
     """
     return [c for c in CODECS if c in known] or list(CODECS)
 
@@ -94,8 +93,9 @@ def answer_codec(sdp: str) -> str | None:
     """The video codec the server chose: "h265", "h264", or None.
 
     We offer H.265 first and H.264 second; the answer lists what the server
-    will send, in its order of preference. The first known codec on the first
-    accepted m=video line wins (payload types such as rtx or red are skipped).
+    may send. The first known codec on the first accepted m=video line wins
+    (payload types such as rtx or red are skipped). go2rtc lists both for a
+    two-codec offer, so this only tells whether the answer is usable at all.
     """
     payloads: list[str] | None = None
     names: dict[str, str] = {}

@@ -16,10 +16,11 @@ decodebin would always pick it, and the decoder is a choice
 failure switches the process to software.
 
 Codecs: for a go2rtc camera, first ask go2rtc (`/api/streams?src=`) which
-video codec the stream has. If it knows, offer only that one: go2rtc answers
-a codec it can't serve, and then sends nothing (see
-signalling.offer_codecs). Otherwise, and for WHEP servers, offer H.265 then
-H.264.
+video codec the stream has, and offer only that one. It knows only while the
+stream is running; otherwise, and for WHEP servers, offer H.265 then H.264.
+The server then sends whichever the stream has, and the branch is built for
+the payload that arrives. The H.264 offer must carry its format parameters
+(see RTP_CAPS).
 
 Signalling: create the offer, set it locally, wait for our ICE gathering to
 complete (about 0.35s), then, on a worker thread, per `camera.signalling`:
@@ -68,9 +69,15 @@ from .signalling import (CODECS, Go2rtcSocket, SignallingError, answer_codec,  #
 log = logging.getLogger("pi-panel-webrtc")
 
 # The transceiver's codecs, offered in the order given (see offer_codecs).
+# H.264 carries the format parameters a browser sends (they become the offer's
+# a=fmtp line). Without them, go2rtc 1.9.14 leaves H.264 out of its answer to
+# an H.265 + H.264 offer, yet still sends H.264 on payload 96 if that is what
+# the stream has, and webrtcbin drops a payload the answer did not name.
 RTP_CAPS = {
     "h265": "application/x-rtp,media=video,encoding-name=H265,payload=97,clock-rate=90000",
-    "h264": "application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000",
+    "h264": "application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000,"
+            "packetization-mode=(string)1,profile-level-id=(string)42e01f,"
+            "level-asymmetry-allowed=(string)1",
 }
 H265_DECODERS = {"v4l2": "v4l2slh265dec", "software": "avdec_h265"}
 CONNECT_TIMEOUT = 20.0     # offer → first frame
@@ -105,7 +112,7 @@ class CameraSession:
         self._pipeline: Gst.Pipeline | None = None
         self._webrtc: Gst.Element | None = None
         self._out: Gst.Element | None = None   # proxysink, read by the display
-        self.codec: str | None = None           # "h264" | "h265", from the answer
+        self.codec: str | None = None           # "h264" | "h265": what is arriving
         self.decoder: str | None = None         # "v4l2" | "software" | "libav"
         self._v4l2_branch: set[str] = set()     # element names, to blame bus errors
         self._coded = 0                         # buffers into the H.265 decoder
@@ -436,10 +443,14 @@ class CameraSession:
         if pipe is None:
             return
         caps = pad.get_current_caps() or pad.query_caps(None)
+        # The pad carries the payload that arrived. An answer to a two-codec
+        # offer lists both, so this, not the answer, says which codec it is.
         encoding = str(_field(caps.get_structure(0), "encoding-name") or "").upper()
         if encoding in ("H265", "HEVC"):
+            self.codec = "h265"
             self._add_h265(pipe, pad)
             return
+        self.codec = "h264"
         self.decoder = "libav"      # the Pi 5 has no H.264 hardware: avdec_h264
         decode = Gst.ElementFactory.make("decodebin")
         decode.connect("pad-added", self._on_decoded_pad)
