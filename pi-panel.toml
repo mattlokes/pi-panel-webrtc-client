@@ -1,7 +1,7 @@
 [package]
-name = "webrtc"
+name = "webrtc-client"
 kind = "app"
-version = "0.1.0"
+version = "0.2.0"
 description = "Full-screen live camera feed over WebRTC (go2rtc / Frigate, or any WHEP server)"
 
 [run]
@@ -10,7 +10,7 @@ description = "Full-screen live camera feed over WebRTC (go2rtc / Frigate, or an
 # other dependency, pi-panel-varlink, is pure Python and found by path.
 # PYTHONFAULTHANDLER: a crash inside GStreamer logs every thread's Python
 # stack to the journal, so the call that crashed can be seen.
-exec = "/usr/bin/python3 -m pi_panel_webrtc --config ${config_dir}/config.toml"
+exec = "/usr/bin/python3 -m pi_panel_webrtc_client --config ${config_dir}/config.toml"
 env = { PYTHONFAULTHANDLER = "1", PYTHONPATH = "${package_dir}/src:${package_dir}/../../pi-panel-core/pi-panel-core-ctl/packages/pi-panel-varlink/src" }
 
 [config]

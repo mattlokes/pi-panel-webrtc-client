@@ -1,5 +1,5 @@
-# pi-panel-app-webrtc configuration.
-# pi-panel-pkg copies this to ~/.config/pi-panel/apps/webrtc/config.toml.
+# pi-panel-webrtc-client configuration.
+# pi-panel-pkg copies this to ~/.config/pi-panel/apps/webrtc-client/config.toml.
 
 # go2rtc's API (standalone, Frigate's built-in one, or the Home Assistant add-on).
 server = "http://frigate.home.local:1984"
@@ -33,7 +33,7 @@ signalling = "websocket"
 decoder = "auto"
 
 # The first camera is shown at start. Switch with the camera_<name> actions,
-# next/previous, or io.pipanel.app.WebRTC.SelectCamera.
+# next/previous, or io.pipanel.app.WebRTCClient.SelectCamera.
 [[camera]]
 name = "front_door"            # lowercase, digits, '-' or '_': used in action names
 label = "Front door"

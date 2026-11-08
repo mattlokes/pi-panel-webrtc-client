@@ -1,4 +1,4 @@
-# pi-panel-app-webrtc
+# pi-panel-webrtc-client
 
 A pi-panel app that shows a live camera feed full screen over WebRTC. It works
 with [go2rtc](https://github.com/AlexxIT/go2rtc) (standalone, Frigate's
@@ -24,10 +24,10 @@ sudo apt install python3-gi python3-gst-1.0 gir1.2-gst-plugins-bad-1.0 \
 Then, as the panel user:
 
 ```bash
-pi-panel-pkg install https://github.com/mattlokes/pi-panel-app-webrtc.git
-$EDITOR ~/.config/pi-panel/apps/webrtc/config.toml      # server + cameras
-pi-panel-ctl enable webrtc
-pi-panel-ctl show webrtc --seconds 30                   # try it
+pi-panel-pkg install https://github.com/mattlokes/pi-panel-webrtc-client.git
+$EDITOR ~/.config/pi-panel/apps/webrtc-client/config.toml  # server + cameras
+pi-panel-ctl enable webrtc-client
+pi-panel-ctl show webrtc-client --seconds 30               # try it
 ```
 
 ## Configuration
@@ -50,9 +50,9 @@ src = "front_door"         # go2rtc stream name, or: whep_url = "http://…/whep
 Edit `config.toml`, then reload. No restart is needed:
 
 ```bash
-pi-panel-ctl action webrtc reload                       # or:
-systemctl kill -s HUP pi-panel-app@webrtc              # or:
-pi-panel-ctl app webrtc io.pipanel.app.WebRTC.Reload    # reports errors
+pi-panel-ctl action webrtc-client reload                           # or:
+systemctl kill -s HUP pi-panel-app@webrtc-client                   # or:
+pi-panel-ctl app webrtc-client io.pipanel.app.WebRTCClient.Reload  # reports errors
 ```
 
 - **Policy changes** (`keep_connected`, `linger_seconds`) apply at once, without dropping the feed.
@@ -131,11 +131,11 @@ and the same commands are available on MQTT:
 ```yaml
 # Home Assistant automation action
 - action: mqtt.publish
-  data: {topic: pi-panel/jazz/command/app/webrtc/action/camera_front_door}
+  data: {topic: pi-panel/jazz/command/app/webrtc-client/action/camera_front_door}
 - action: mqtt.publish
   data:
     topic: pi-panel/jazz/command/show
-    payload: '{"app": "webrtc", "seconds": 60, "priority": 50}'
+    payload: '{"app": "webrtc-client", "seconds": 60, "priority": 50}'
 ```
 
 Priority 50 puts it above schedules, so the feed shows even when a night
@@ -145,10 +145,10 @@ seconds.
 ## Control
 
 ```bash
-pi-panel-ctl action webrtc next                      # also: previous, reconnect, reload, camera_<name>
-pi-panel-ctl app webrtc io.pipanel.app.WebRTC.GetStatus
-pi-panel-ctl app webrtc io.pipanel.app.WebRTC.SelectCamera '{"name": "front_door"}'
-journalctl -u pi-panel-app@webrtc -f
+pi-panel-ctl action webrtc-client next                      # also: previous, reconnect, reload, camera_<name>
+pi-panel-ctl app webrtc-client io.pipanel.app.WebRTCClient.GetStatus
+pi-panel-ctl app webrtc-client io.pipanel.app.WebRTCClient.SelectCamera '{"name": "front_door"}'
+journalctl -u pi-panel-app@webrtc-client -f
 ```
 
 `GetStatus` reports:

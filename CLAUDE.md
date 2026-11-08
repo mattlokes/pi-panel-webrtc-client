@@ -1,4 +1,4 @@
-# pi-panel-app-webrtc
+# pi-panel-webrtc-client
 
 A pi-panel app that shows a full-screen WebRTC camera feed from go2rtc or a
 WHEP server. It uses GStreamer webrtcbin through PyGObject. The README covers

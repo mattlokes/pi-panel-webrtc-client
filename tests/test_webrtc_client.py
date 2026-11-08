@@ -15,10 +15,10 @@ from pathlib import Path
 
 import pytest
 
-from pi_panel_webrtc.config import Config, ConfigError
-from pi_panel_webrtc.controller import Controller
-from pi_panel_webrtc.signalling import SignallingError, post_offer
-from pi_panel_webrtc.status import StatusView, status_view
+from pi_panel_webrtc_client.config import Config, ConfigError
+from pi_panel_webrtc_client.controller import Controller
+from pi_panel_webrtc_client.signalling import SignallingError, post_offer
+from pi_panel_webrtc_client.status import StatusView, status_view
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -56,7 +56,7 @@ def test_config_rejects(data, msg):
 
 def test_manifest_parses():
     data = tomllib.loads((ROOT / "pi-panel.toml").read_text())
-    assert data["package"]["name"] == "webrtc"
+    assert data["package"]["name"] == "webrtc-client"
     assert data["app"] == {"varlink": True, "rotate": False}
     assert "python3-gst-1.0" in data["system"]["packages"]
 
@@ -65,7 +65,7 @@ def test_interface_description_is_valid_idl(tmp_path):
     varlinkctl = shutil.which("varlinkctl")
     if not varlinkctl:
         pytest.skip("varlinkctl not installed")
-    idl = ROOT / "src" / "pi_panel_webrtc" / "io.pipanel.app.WebRTC.varlink"
+    idl = ROOT / "src" / "pi_panel_webrtc_client" / "io.pipanel.app.WebRTCClient.varlink"
     result = subprocess.run([varlinkctl, "validate-idl", str(idl)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 
@@ -275,8 +275,8 @@ import json as _json
 import socketserver as _ss
 import struct as _struct
 
-from pi_panel_webrtc.signalling import Go2rtcSocket
-from pi_panel_webrtc.wsclient import WebSocket, WebSocketClosed, WebSocketError
+from pi_panel_webrtc_client.signalling import Go2rtcSocket
+from pi_panel_webrtc_client.wsclient import WebSocket, WebSocketClosed, WebSocketError
 
 
 def _frame(opcode, payload=b"", fin=True):
@@ -443,8 +443,8 @@ def test_reload_changing_signalling_reconnects():
 
 # --- H.265: the codec in the answer, and the decoder -------------------------------------
 
-from pi_panel_webrtc.decoders import DecoderLadder
-from pi_panel_webrtc.signalling import answer_codec
+from pi_panel_webrtc_client.decoders import DecoderLadder
+from pi_panel_webrtc_client.signalling import answer_codec
 
 
 def _sdp(*media):
@@ -512,7 +512,7 @@ def test_reload_changing_decoder_reconnects():
 
 # --- which codecs to offer go2rtc ----------------------------------------------------
 
-from pi_panel_webrtc.signalling import offer_codecs, stream_codecs, video_codecs
+from pi_panel_webrtc_client.signalling import offer_codecs, stream_codecs, video_codecs
 
 
 def test_video_codecs_from_go2rtc_stream():

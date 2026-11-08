@@ -1,8 +1,8 @@
-# pi-panel-app-webrtc: a full-screen WebRTC camera feed.
+# pi-panel-webrtc-client: a full-screen WebRTC camera feed.
 #
 # Served next to io.pipanel.App on $PI_PANEL_APP_SOCKET. Reach it with
-#   pi-panel-ctl app webrtc io.pipanel.app.WebRTC.GetStatus
-interface io.pipanel.app.WebRTC
+#   pi-panel-ctl app webrtc-client io.pipanel.app.WebRTCClient.GetStatus
+interface io.pipanel.app.WebRTCClient
 
 type Camera (
   name: string,

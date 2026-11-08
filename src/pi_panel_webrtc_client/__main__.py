@@ -1,4 +1,4 @@
-"""pi-panel-app-webrtc: a full-screen WebRTC camera feed.
+"""pi-panel-webrtc-client: a full-screen WebRTC camera feed.
 
 Everything runs on one GLib main loop: the display pipeline, the camera
 session, a 1s policy tick, and requests from the io.pipanel.App service. The
@@ -30,7 +30,7 @@ from .controller import Controller  # noqa: E402
 from .decoders import DecoderLadder  # noqa: E402
 from .status import status_view  # noqa: E402
 
-log = logging.getLogger("pi-panel-webrtc")
+log = logging.getLogger("pi-panel-webrtc-client")
 
 
 def on_main(fn, *args) -> None:
@@ -69,7 +69,7 @@ def camera_actions(controller: Controller, idle, reload) -> dict:
 
 
 def webrtc_interface(controller: Controller, reload) -> Interface:
-    iface = Interface(files(__package__).joinpath("io.pipanel.app.WebRTC.varlink")
+    iface = Interface(files(__package__).joinpath("io.pipanel.app.WebRTCClient.varlink")
                       .read_text(encoding="utf-8"))
 
     @iface.method("ListCameras")
@@ -80,14 +80,14 @@ def webrtc_interface(controller: Controller, reload) -> Interface:
     async def reload_method(call: Call) -> dict:   # not `reload`: that is the callable
         error = on_main(reload)
         if error:
-            raise VarlinkError("io.pipanel.app.WebRTC.InvalidConfig", {"message": error})
+            raise VarlinkError("io.pipanel.app.WebRTCClient.InvalidConfig", {"message": error})
         return camera_list(controller)
 
     @iface.method("SelectCamera")
     async def select_camera(call: Call) -> None:
         name = call.param("name", str)
         if controller.config.camera(name) is None:
-            raise VarlinkError("io.pipanel.app.WebRTC.NoSuchCamera", {"name": name})
+            raise VarlinkError("io.pipanel.app.WebRTCClient.NoSuchCamera", {"name": name})
         on_main(controller.select, name)
 
     @iface.method("GetStatus")
@@ -98,7 +98,7 @@ def webrtc_interface(controller: Controller, reload) -> Interface:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(prog="pi-panel-webrtc")
+    p = argparse.ArgumentParser(prog="pi-panel-webrtc-client")
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args()
@@ -156,7 +156,7 @@ def main() -> int:
         return None
 
     service = AppService(
-        product="pi-panel-app-webrtc", version="0.1.0",
+        product="pi-panel-webrtc-client", version="0.2.0",
         on_visible=lambda visible: idle(controller.set_visible, visible),
         actions=camera_actions(controller, idle, do_reload),
         interfaces=[webrtc_interface(controller, do_reload)],
@@ -170,7 +170,7 @@ def main() -> int:
     # app contract's 5 seconds.
     for sig in (signal.SIGTERM, signal.SIGINT):
         GLib.unix_signal_add(GLib.PRIORITY_HIGH, sig, lambda: loop.quit() or False)
-    # SIGHUP: re-read config.toml (`systemctl kill -s HUP pi-panel-app@webrtc`).
+    # SIGHUP: re-read config.toml (`systemctl kill -s HUP pi-panel-app@webrtc-client`).
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGHUP, lambda: (do_reload(), True)[1])
 
     try:

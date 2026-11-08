@@ -66,7 +66,7 @@ from .decoders import DecoderLadder  # noqa: E402
 from .signalling import (CODECS, Go2rtcSocket, SignallingError, answer_codec,  # noqa: E402
                          offer_codecs, post_offer, stream_codecs)
 
-log = logging.getLogger("pi-panel-webrtc")
+log = logging.getLogger("pi-panel-webrtc-client")
 
 # The transceiver's codecs, offered in the order given (see offer_codecs).
 # H.264 carries the format parameters a browser sends (they become the offer's

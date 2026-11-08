@@ -46,7 +46,7 @@ from gi.repository import Gst, Pango, PangoCairo  # noqa: E402
 
 from .status import StatusView  # noqa: E402
 
-log = logging.getLogger("pi-panel-webrtc")
+log = logging.getLogger("pi-panel-webrtc-client")
 
 WIDTH, HEIGHT = 1280, 720        # the status canvas; waylandsink scales it
 RING_RADIUS, RING_WIDTH = 22, 3
