@@ -15,6 +15,9 @@ env = { PYTHONFAULTHANDLER = "1", PYTHONPATH = "${package_dir}/src:${package_dir
 
 [config]
 templates = ["config.toml.example"]
+# Run by `pi-panel-ctl config check` (and before `config import`). It imports
+# only the config parser, so it needs neither GStreamer nor the varlink path.
+check = "/usr/bin/env PYTHONPATH=${package_dir}/src /usr/bin/python3 -m pi_panel_webrtc_client.check ${config_dir}/config.toml"
 
 [system]
 packages = [

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 import threading
 import tomllib
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -588,3 +589,24 @@ def test_status_view_idle_and_playing():
     assert status_view(_status("idle")) == StatusView("Front door")
     assert status_view(_status("idle", visible=False)) is None
     assert status_view(_status("playing")) is None
+
+
+def test_check_module_validates_without_gstreamer(tmp_path):
+    """The manifest's [config] check runs as a subprocess with only src/ on
+    the path; it must not import gi."""
+    def check(path):
+        return subprocess.run(
+            [sys.executable, "-c",
+             "import sys, runpy; sys.argv = ['check', sys.argv[1]]; "
+             "sys.modules['gi'] = None; "                       # importing gi would fail
+             "runpy.run_module('pi_panel_webrtc_client.check', run_name='__main__')",
+             str(path)],
+            env={"PYTHONPATH": str(ROOT / "src"), "PATH": "/usr/bin:/bin"},
+            capture_output=True, text=True)
+    good = check(ROOT / "config.toml.example")
+    assert good.returncode == 0, good.stderr
+    assert "config ok" in good.stdout
+    bad = tmp_path / "config.toml"
+    bad.write_text("[[camera]]\nname = 'x'\n")
+    result = check(bad)
+    assert result.returncode == 1 and "config error" in result.stderr
